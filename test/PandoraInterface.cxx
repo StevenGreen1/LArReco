@@ -172,6 +172,7 @@ void LoadGeometry(const Parameters &inputParameters, const Pandora *const pPrima
 void LoadEvent(const Parameters &inputParameters, const pandora::Pandora *const pPrimaryPandora, TiXmlElement *pTiXmlElement)
 {
     ProtoHitVector protoHitVectorU, protoHitVectorV, protoHitVectorW;
+    IntIntMap trackParentId;
 
     for (TiXmlElement *pSubTiXmlElement = pTiXmlElement->FirstChildElement(); pSubTiXmlElement != NULL; pSubTiXmlElement = pSubTiXmlElement->NextSiblingElement())
     {
@@ -183,7 +184,27 @@ void LoadEvent(const Parameters &inputParameters, const pandora::Pandora *const 
         }
         else if (componentName == "MCParticle")
         {
-            LoadMCParticle(pSubTiXmlElement, pPrimaryPandora);
+            LoadMCParticle(pSubTiXmlElement, pPrimaryPandora, trackParentId);
+        }
+    }
+
+    // Load MCParticle parent daughter relationships
+    for (const auto iter : trackParentId)
+    {
+        const int particleId(iter.first);
+        const int parentId(iter.second);
+
+        if (trackParentId.find(parentId) != trackParentId.end())
+        {
+            try
+            {
+                PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, PandoraApi::SetMCParentDaughterRelationship(*pPrimaryPandora,
+                    (void*)((intptr_t)parentId), (void*)((intptr_t)particleId)));
+            }
+            catch (const pandora::StatusCodeException &)
+            {
+                std::cout << "LoadEvent - Unable to create mc particle relationship, invalid information supplied " << std::endl;
+            }
         }
     }
 
@@ -224,7 +245,7 @@ void LoadEvent(const Parameters &inputParameters, const pandora::Pandora *const 
         parameters.m_hitRegion = pandora::SINGLE_REGION;
         parameters.m_layer = 0;
         parameters.m_isInOuterSamplingLayer = false;
-        parameters.m_pParentAddress = nullptr;
+        parameters.m_pParentAddress = (void*)((intptr_t)(protoHit.m_id));;
         parameters.m_larTPCVolumeId = 0;
 
         try
@@ -234,6 +255,18 @@ void LoadEvent(const Parameters &inputParameters, const pandora::Pandora *const 
         catch (...)
         {
             std::cout << "Unable to make hits" << std::endl;
+        }
+
+        if (trackParentId.find(protoHit.m_mcId) != trackParentId.end())
+        {
+            try
+            {
+                PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, PandoraApi::SetCaloHitToMCParticleRelationship(*pPrimaryPandora, (void*)((intptr_t)protoHit.m_id), (void*)((intptr_t)protoHit.m_mcId), 1.f));
+            }
+            catch (...)
+            {
+                std::cout << "Unable to make MCParticle - Hit relationships" << std::endl;
+            }
         }
     }
 }
@@ -252,6 +285,8 @@ void LoadCell(const Parameters &inputParameters, TiXmlElement *pTiXmlElement, Pr
     const float v(YZtoV(localPosition.GetY(), localPosition.GetZ(), inputParameters));
     const float w(localPosition.GetZ());
     const float energy(std::atof(pTiXmlElement->Attribute("Energy")));
+    const int id(std::atoi(pTiXmlElement->Attribute("Id")));
+    const int mcId(std::atoi(pTiXmlElement->Attribute("MCId")));
 
     ProtoHit protoHitU, protoHitV, protoHitW;
 
@@ -259,16 +294,22 @@ void LoadCell(const Parameters &inputParameters, TiXmlElement *pTiXmlElement, Pr
     protoHitU.m_z = u;
     protoHitU.m_energy = energy;
     protoHitU.m_hitType = pandora::TPC_VIEW_U;
+    protoHitU.m_id = id;
+    protoHitU.m_mcId = mcId;
 
     protoHitV.m_x = x;
     protoHitV.m_z = v;
     protoHitV.m_energy = energy;
     protoHitV.m_hitType = pandora::TPC_VIEW_V;
+    protoHitV.m_id = id;
+    protoHitV.m_mcId = mcId;
 
     protoHitW.m_x = x;
     protoHitW.m_z = w;
     protoHitW.m_energy = energy;
     protoHitW.m_hitType = pandora::TPC_VIEW_W;
+    protoHitW.m_id = id;
+    protoHitW.m_mcId = mcId;
 
     protoHitVectorU.push_back(protoHitU);
     protoHitVectorV.push_back(protoHitV);
@@ -279,7 +320,7 @@ void LoadCell(const Parameters &inputParameters, TiXmlElement *pTiXmlElement, Pr
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-void LoadMCParticle(TiXmlElement *pTiXmlElement, const pandora::Pandora *const pPrimaryPandora)
+void LoadMCParticle(TiXmlElement *pTiXmlElement, const pandora::Pandora *const pPrimaryPandora, IntIntMap &trackParentId)
 {
     lar_content::LArMCParticleFactory mcParticleFactory;
     lar_content::LArMCParticleParameters parameters;
@@ -304,6 +345,9 @@ void LoadMCParticle(TiXmlElement *pTiXmlElement, const pandora::Pandora *const p
         parameters.m_pParentAddress = (void*)((intptr_t)particleId);
 
         PANDORA_THROW_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraApi::MCParticle::Create(*pPrimaryPandora, parameters, mcParticleFactory));
+
+        const int parentId(std::atoi(pTiXmlElement->Attribute("ParentId")));
+        trackParentId[particleId] = parentId;
     }
     catch (StatusCodeException &statusCodeException)
     {
