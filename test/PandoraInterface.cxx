@@ -297,6 +297,9 @@ void LoadCell(const Parameters &inputParameters, TiXmlElement *pTiXmlElement, Pr
     const int id(std::atoi(pTiXmlElement->Attribute("Id")));
     const int mcId(std::atoi(pTiXmlElement->Attribute("MCId")));
 
+    if (energy < inputParameters.m_hitEnergyThreshold)
+        return;
+
     ProtoHit protoHitU, protoHitV, protoHitW;
 
     protoHitU.m_x = x;
@@ -467,7 +470,7 @@ bool ParseCommandLine(int argc, char *argv[], Parameters &parameters)
     int c(0);
     std::string recoOption, geometryFileName;
 
-    while ((c = getopt(argc, argv, "r:i:e:n:s:g:pNDh")) != -1)
+    while ((c = getopt(argc, argv, "r:i:e:n:s:g:T:pNDh")) != -1)
     {
         switch (c)
         {
@@ -488,6 +491,9 @@ bool ParseCommandLine(int argc, char *argv[], Parameters &parameters)
             break;
         case 'g':
             geometryFileName = optarg;
+            break;
+        case 'T':
+            parameters.m_hitEnergyThreshold = atof(optarg);
             break;
         case 'p':
             parameters.m_printOverallRecoStatus = true;
