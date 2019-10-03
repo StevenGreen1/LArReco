@@ -60,7 +60,7 @@ endif()
 # Build products
 
 # - Collect sources - not ideal because you have to keep running CMake to pick up changes
-#file(GLOB_RECURSE LAR_RECO_SRCS RELATIVE ${PROJECT_SOURCE_DIR} "src/*.cxx")
+#file(GLOB_RECURSE LAR_RECO_SRCS RELATIVE ${PROJECT_SOURCE_DIR} "src/*.cc")
 
 # - Add library and properties
 #add_library(${PROJECT_NAME} SHARED ${LAR_RECO_SRCS})

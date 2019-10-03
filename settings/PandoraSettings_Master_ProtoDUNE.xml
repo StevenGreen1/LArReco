@@ -5,7 +5,7 @@
     <SingleHitTypeClusteringMode>true</SingleHitTypeClusteringMode>
 
     <!-- ALGORITHM SETTINGS -->
-    <algorithm type = "LArEventReading"/>
+    <!--algorithm type = "LArEventReading"/-->
     <algorithm type = "LArPreProcessing">
         <OutputCaloHitListNameU>CaloHitListU</OutputCaloHitListNameU>
         <OutputCaloHitListNameV>CaloHitListV</OutputCaloHitListNameV>
@@ -15,6 +15,7 @@
     </algorithm>
     <algorithm type = "LArVisualMonitoring">
         <CaloHitListNames>CaloHitListU CaloHitListV CaloHitListW</CaloHitListNames>
+        <MCParticleListNames>Input</MCParticleListNames>
         <ShowDetector>true</ShowDetector>
     </algorithm>
 
